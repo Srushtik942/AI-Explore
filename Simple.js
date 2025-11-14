@@ -5,7 +5,8 @@ import { json } from 'express';
 const API_URL="https://openrouter.ai/api/v1/chat/completions";
 const MODEL = 'nvidia/nemotron-nano-12b-v2-vl:free';
 const API_KEY = process.env.NANO_API_KEY;
-const PROMPT = "Write hello world in 3 programming language";
+console.log(API_KEY);
+const PROMPT = "Write information of 7 wonders";
 
 
 if(!API_KEY){

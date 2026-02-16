@@ -11,10 +11,10 @@ if (!API_KEY) {
 }
 
 const PROMPT_CREATIVE = "Write 3 tagline ideas for Berlin tourism.";
+const PROMPT_LONG = "Write a detailed 8-bullet day-trip plan for Barcelona including timings and brief tips per stop.";
 const max_tokens_mid = 50;
 let max_tokens_small = 80;
 let max_tokens_large = 800;
-const PROMPT_LONG = "Write a detailed 8-bullet day-trip plan for Barcelona including timings and brief tips per stop.";
 
 async function Chat(messages, options) {
     try {
@@ -34,14 +34,22 @@ async function Chat(messages, options) {
             }
         );
 
-        return res.data.choices[0].message;
+        // Safely check if the response structure exists
+        if (res.data && res.data.choices && res.data.choices.length > 0) {
+            return res.data.choices[0].message;
+        } else {
+            console.error("Unexpected Response Structure:", res.data);
+            return { content: "Error: No response content found." };
+        }
     } catch (err) {
-        console.error(err.response?.data || err);
+        // Log the specific error message from the API
+        console.error("❌ API Error:", err.response?.data?.error?.message || err.message);
+        return { content: "Error: Failed to fetch from API." };
     }
 }
 
 async function lab02_temprature() {
-    console.log("Lab 02 — Temperature Test");
+    console.log("\n--- Lab 02 — Temperature Test ---");
     console.log(`Testing temperature: low=0.2 vs high=0.9`);
 
     const low = await Chat(
@@ -54,44 +62,34 @@ async function lab02_temprature() {
         { temperature: 0.9, max_tokens: max_tokens_mid }
     );
 
-    console.log("\n Low Temperature (0.2) — predictable:");
-    console.log(low.content);
-
-    console.log("\n High Temperature (0.9) — creative:");
-    console.log(high.content);
+    console.log("\n[Low Temperature (0.2)]:", low.content);
+    console.log("\n[High Temperature (0.9)]:", high.content);
 }
 
-lab02_temprature().catch(err => {
-    console.error(err.response?.data || err);
-});
-
-
 async function lab03_token_test() {
-    console.log("Lab 03- Token size test");
+    console.log("\n--- Lab 03 — Token size test ---");
     console.log(`Testing max_tokens small=${max_tokens_small} vs large=${max_tokens_large}`);
 
     const shortResponse = await Chat(
-        [
-            {role:"user", content: PROMPT_LONG}
-        ],
-        {temperature:0.6, max_tokens:max_tokens_small}
-    )
-
-    const longResponse = await Chat(
-        [
-            {role:"user",content: PROMPT_LONG}
-        ],
-        {temperature: 0.6, max_tokens:max_tokens_large}
+        [{ role: "user", content: PROMPT_LONG }],
+        { temperature: 0.6, max_tokens: max_tokens_small }
     );
 
-    console.log("Small Token Response:");
-    console.log(shortResponse.content);
+    const longResponse = await Chat(
+        [{ role: "user", content: PROMPT_LONG }],
+        { temperature: 0.6, max_tokens: max_tokens_large }
+    );
 
-    console.log("Large Token Response:");
-    console.log(longResponse.content);
+    console.log("\n[Small Token Response]:", shortResponse.content);
+    console.log("\n[Large Token Response]:", longResponse.content);
 }
 
-lab03_token_test().catch((err)=>{
-   console.error(err.response?.data || err);
+// Execute labs sequentially to prevent messy logs
+async function runLabs() {
+    await lab02_temprature();
+    await lab03_token_test();
+}
 
-})
+runLabs().catch(err => console.error("Global Error:", err));
+
+

@@ -38,7 +38,7 @@ Rules:
 
 `;
 
-const USER_PROMPT =  'Create a short travel plan for Paris,France for a first-time visitor. ';
+// const USER_PROMPT =  'Create a short travel plan for Paris,France for a first-time visitor. ';
 
 
 async function main() {

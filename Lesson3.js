@@ -1,14 +1,10 @@
 import 'dotenv/config';
 import axios from 'axios';
-import OpenAI from 'openai'
-// using openAI
 
 
-const client = new OpenAI({
-    baseURL:'https://openrouter.ai/api/v1 ',
-    apiKey :  process.env.NANO_API_KEY
-})
 
+ const baseURL='https://openrouter.ai/api/v1/chat/completions';
+const apiKey =  process.env.NANO_API_KEY;
 const MODEL = 'nvidia/nemotron-nano-12b-v2-vl:free';
 
 
@@ -44,12 +40,14 @@ const USER_PROMPT =  'Create a short travel plan for Paris,France for a first-ti
 
 async function main() {
 
+
     if(!process.env.NANO_API_KEY){
         console.error("Set openrouter api key");
         process.exit(1);
     }
 
-    const res = await client.chat.completions.create(
+    const res = await axios.post(
+        baseURL,
         {
             model: MODEL,
             messages:[
@@ -57,7 +55,14 @@ async function main() {
                 {role: 'user', content: USER_PROMPT}
             ]
         },
+        {
+            headers:{
+                Authorization : `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            }
+        }
     );
+    console.log(res);
     console.log(res.data?.choices?.[0]?.message?.content || '');
 
 }

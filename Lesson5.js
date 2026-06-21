@@ -3,10 +3,12 @@ import axios from 'axios';
 import express from "express";
 import cors from "cors";
 import { parse } from 'dotenv';
+import crypto from 'crypto';
 
 const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const MODEL = 'nvidia/nemotron-nano-12b-v2-vl:free';
 const API_KEY = process.env.NANO_API_KEY;
+const AUTH_SECRET = process.env.AUTH_SECRET || 'dev_auth_secret';
 
 const app = express();
 app.use(cors());
@@ -59,6 +61,82 @@ function tryParseModelJSON(content) {
 
 app.get("/health", (req, res) => {
   res.json({ ok: true });
+});
+
+// ---------------------- SIMPLE AUTH HELPERS ----------------------
+
+const USERS = new Map(); // in-memory user store: username -> { passwordHash }
+const TOKENS = new Map(); // token -> { username, expires }
+
+function hashPassword(password) {
+  return crypto.createHmac('sha256', AUTH_SECRET).update(password).digest('hex');
+}
+
+function generateToken(username) {
+  const token = crypto.randomBytes(24).toString('hex');
+  const expires = Date.now() + 1000 * 60 * 60 * 24; // 24 hours
+  TOKENS.set(token, { username, expires });
+  return token;
+}
+
+function authenticateToken(token) {
+  if (!token) return null;
+  const data = TOKENS.get(token);
+  if (!data) return null;
+  if (data.expires < Date.now()) {
+    TOKENS.delete(token);
+    return null;
+  }
+  return data.username;
+}
+
+// ---------------------- AUTH ROUTES ----------------------
+
+app.post('/api/signup', (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ error: 'username and password required' });
+    if (USERS.has(username)) return res.status(409).json({ error: 'User already exists' });
+
+    const passwordHash = hashPassword(password);
+    USERS.set(username, { passwordHash });
+
+    return res.json({ ok: true, message: 'User created' });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/login', (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ error: 'username and password required' });
+
+    const user = USERS.get(username);
+    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+
+    const passwordHash = hashPassword(password);
+    if (passwordHash !== user.passwordHash) return res.status(401).json({ error: 'Invalid credentials' });
+
+    const token = generateToken(username);
+    return res.json({ ok: true, token });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// Example protected route
+app.get('/api/me', (req, res) => {
+  try {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader || req.query.token;
+    const username = authenticateToken(token);
+    if (!username) return res.status(401).json({ error: 'Unauthorized' });
+
+    return res.json({ ok: true, user: { username } });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
 });
 
 

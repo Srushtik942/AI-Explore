@@ -43,7 +43,7 @@ async function Chat(messages, options) {
         }
     } catch (err) {
         // Log the specific error message from the API
-        console.error("❌ API Error:", err.response?.data?.error?.message || err.message);
+        console.error(" API Error:", err.response?.data?.error?.message || err.message);
         return { content: "Error: Failed to fetch from API." };
     }
 }

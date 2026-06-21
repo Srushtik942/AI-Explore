@@ -12,7 +12,7 @@ if(!API_KEY){
 }
 
 const SYSTEM_PROMPT = `
-You are an AI assistant acting as a helpfu; travel agent.
+You are an AI assistant acting as a helpful travel agent.
 Respond with JSON only. No prose, markdown or backticks.
 
 Use exactly this schema and field names:
@@ -38,7 +38,7 @@ Rules:
 
 `;
 
-// const USER_PROMPT =  'Create a short travel plan for Paris,France for a first-time visitor. ';
+const USER_PROMPT =  'Create a short travel plan for Paris,France for a first-time visitor. ';
 
 
 async function main() {

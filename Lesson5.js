@@ -43,8 +43,40 @@ Rules:
 - If unsure, use null or empty arrays.
 `;
 
-// ---------------------- Creative PROMPT ----------------------
+// ---------------------- Itinerary Sstem PROMPT ----------------------
 
+const ITINERARY_SYSTEM_PROMPT = `
+You are an AI assistant acting as a helpful travel agent.
+Respond with JSON only. No prose, markdown or backticks.
+
+Follow this exact schema:
+
+{
+  "origin": "string - city, country",
+  "destination": "string - city, country",
+  "duration_days": number,
+  "summary": "string - 2-3 sentence trip overview",
+  "days": [
+    {
+      "day": number,
+      "title": "string",
+      "activities": [
+        { "time": "string", "activity": "string", "location": "string", "estimated_cost": number }
+      ]
+    }
+  ],
+  "estimated_total_cost": number,
+  "currency": "string",
+  "local_tips": ["string", "string"]
+}
+
+Rules:
+- Output valid JSON only with the same fields.
+- Numbers must not be quoted.
+- The itinerary must fit within the given budget range.
+- The number of "days" entries must equal duration_days.
+- If unsure about a detail, use null or an empty array.
+`;
 
 
 // ---------------------- JSON PARSER ----------------------
@@ -258,6 +290,70 @@ Follow the required JSON schema exactly.
     });
   }
 });
+
+// API for generating detailed itinerary
+
+
+
+app.post("/api/trips/search",async(req,res)=>{
+  try{
+    const { origin, destination,dates, travellers, budget, preference, contact } = req.body;
+
+    if(!destination || !dates || !travellers || !budget){
+      return res.status(400).json({error:"Destination, dates and travelers not selected"});
+    }
+
+    if (new Date(dates.endDate) <= new Date(dates.startDate)) {
+      return res.status(400).json({ error: "endDate must be after startDate" });
+    }
+
+     const userPrompt = `
+Destination: ${destination.city}, ${destination.country}
+Duration: ${dates.durationDays} days (${dates.startDate} to ${dates.endDate})
+Travelers: ${travellers.adults} adults, ${travellers.children || 0} children
+Budget: ${budget.min}-${budget.max} ${budget.currency}
+Accommodation preference: ${preference.accommodation}
+Generate a day-by-day itinerary ONLY for this destination.
+Follow the required JSON schema exactly.
+`;
+
+const response = await axios.post(
+  API_URL,
+  {
+    model:MODEL,
+    messages:[
+      {role:"system", content: ITINERARY_SYSTEM_PROMPT},
+      {role:"user", content: userPrompt},
+    ],
+  },
+  {
+    headers:{
+      Authorization: `Bearer ${API_KEY}`,
+      "Content-Type": "application/json",
+    }
+  }
+)
+
+const content = response.data?.choices?.[0]?.message?.content || "";
+const parsed = tryParseModelJSON(content);
+
+
+console.log("Raw model response",content);
+
+ if (parsed.ok) {
+      return res.json(parsed.value);
+    } else {
+      return res.json({ error: "Model did not return valid JSON", raw: content });
+    }
+
+  }catch(error){
+    console.error(error);
+    res.status(500).json({message:"Internal Server Error", error:error.message});
+  }
+})
+
+
+
 
 // ---------------------- START SERVER ----------------------
 

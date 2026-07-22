@@ -401,7 +401,7 @@ console.log("Raw model response",content);
 
 app.post("/api/blogs/submit",authMiddleware, async(req,res)=>{
   try{
-    const {title, destination,content, image} =  req.body;
+    const {title, destination,content, image,slug, source} =  req.body;
 
     const slug = title.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^\w\-]+/g, '');
     const post = await Blog.create({
